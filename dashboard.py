@@ -321,38 +321,30 @@ if len(data_hari) == 2:
 with tab3:
     st.subheader("Penyewaan Sepeda Berdasarkan Kondisi Cuaca")
 
-    # Pastikan kolom cuaca dan jumlah penyewaan memiliki format yang benar
-    harian["weathersit"] = pd.to_numeric(
-        harian["weathersit"], errors="coerce"
+    jam["weathersit"] = pd.to_numeric(
+        jam["weathersit"], errors="coerce"
     )
 
-    harian["cnt"] = pd.to_numeric(
-        harian["cnt"], errors="coerce"
+    jam["cnt"] = pd.to_numeric(
+        jam["cnt"], errors="coerce"
     )
-
-    # Buat ulang label cuaca berdasarkan kode asli
-    harian["weather_label"] = harian["weathersit"].map(nama_cuaca)
 
     urutan_cuaca = [
         "Cerah",
-        "Berawan/Berkabut",
+        "Berkabut/Mendung",
         "Hujan/Salju Ringan",
         "Hujan/Salju Lebat"
     ]
 
-    # Hitung rata-rata penyewaan setiap kondisi cuaca
     rata_cuaca = (
-        harian.dropna(subset=["weather_label", "cnt"])
-        .groupby("weather_label")["cnt"]
+        jam.dropna(subset=["weathersit", "cnt"])
+        .groupby("weathersit")["cnt"]
         .mean()
-        .reindex(urutan_cuaca)
+        .reindex([1, 2, 3, 4])
         .dropna()
     )
 
-    # Hilangkan nilai tidak valid
-    rata_cuaca = rata_cuaca.replace(
-        [float("inf"), float("-inf")], float("nan")
-    ).dropna()
+    rata_cuaca.index = rata_cuaca.index.map(nama_cuaca)
 
     if not rata_cuaca.empty:
         fig, ax = plt.subplots(figsize=(10, 5))
@@ -372,40 +364,33 @@ with tab3:
             ax.text(
                 i,
                 nilai + (rata_cuaca.max() * 0.02),
-                f"{nilai:,.0f}",
+                f"{nilai:,.2f}",
                 ha="center"
             )
 
-        ax.set_title("Rata-rata Penyewaan Berdasarkan Cuaca")
+        ax.set_title("Rata-rata Penyewaan Sepeda per Jam berdasarkan Kondisi Cuaca")
         ax.set_xlabel("Kondisi Cuaca")
-        ax.set_ylabel("Rata-rata Penyewaan")
+        ax.set_ylabel("Rata-rata Penyewaan per Jam (sepeda)")
 
-        nilai_maks = rata_cuaca.max()
-
-        if pd.notna(nilai_maks) and nilai_maks > 0:
-            ax.set_ylim(0, nilai_maks * 1.15)
-        else:
-            ax.set_ylim(0, 1)
+        ax.set_ylim(0, rata_cuaca.max() * 1.15)
 
         plt.xticks(rotation=10)
         st.pyplot(fig)
         plt.close(fig)
 
-        # Interpretasi hasil
         if "Cerah" in rata_cuaca.index and len(rata_cuaca) > 1:
             cuaca_terendah = rata_cuaca.idxmin()
             nilai_cerah = rata_cuaca["Cerah"]
 
-            if nilai_cerah > 0:
-                penurunan = (
-                    1 - rata_cuaca.min() / nilai_cerah
-                ) * 100
+            penurunan = (
+                1 - rata_cuaca.min() / nilai_cerah
+            ) * 100
 
-                st.info(
-                    f"Rata-rata penyewaan pada kondisi "
-                    f"{cuaca_terendah} lebih rendah sekitar "
-                    f"{penurunan:.1f}% dibandingkan saat cuaca cerah."
-                )
+            st.info(
+                f"Rata-rata penyewaan pada kondisi "
+                f"{cuaca_terendah} lebih rendah sekitar "
+                f"{penurunan:.1f}% dibandingkan saat cuaca cerah."
+            )
 
         with st.expander(
             "Lihat rata-rata penyewaan setiap kondisi cuaca"
@@ -417,9 +402,6 @@ with tab3:
             )
 
     else:
-        st.warning(
-            "Tidak ada data cuaca yang valid untuk ditampilkan. "
-            "Silakan periksa filter tanggal, musim, dan kolom weathersit."
-        )
+        st.warning("Tidak ada data cuaca yang valid untuk ditampilkan.")
 
 st.caption("Sumber: Bike Sharing Dataset (2011–2012)")
